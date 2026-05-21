@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────────────────────────
 # Edge TTS API — Python dependencies
-# Tested on Python 3.11 (Render free tier default)
+# Python 3.11 (Render free tier default)
 # Install: pip install -r requirements.txt
 # ─────────────────────────────────────────────────────────────────
 
@@ -8,8 +8,8 @@
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 
-# TTS engine (Microsoft Edge neural voices — no API key needed)
-edge-tts==6.1.12
+# TTS engine — v7+ includes the Sec-MS-GEC token fix (403 fix)
+edge-tts==7.2.8
 
 # PDF text extraction
 PyPDF2==3.0.1
@@ -17,10 +17,8 @@ PyPDF2==3.0.1
 # Data validation (used internally by FastAPI)
 pydantic==2.7.1
 
-# Async HTP (required by edge-tts)
-aiohttp>=3.10.0
+# Async HTTP (required by edge-tts v7+)
+aiohttp==3.10.11
 
-# Multipart form / file uplod support
+# Multipart form / file upload support
 python-multipart==0.0.9
-
-edge-tts>=7.0.0
