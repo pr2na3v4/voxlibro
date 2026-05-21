@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Edge TTS — API Tester</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+<style>
+  /* ── Variables ── */
+  :root {
+    --bg:       #0a0c0f;
+    --surface:  #0f1318;
+    --panel:    #141920;
+    --border:   #1f2d3d;
+    --border2:  #263547;
+    --accent:   #00e5ff;
+    --accent2:  #00ff88;
+    --warn:     #ff6b35;
+    --text:     #c8d8e8;
+    --muted:    #4a6070;
+    --mono:     'Share Tech Mono', monospace;
+    --sans:     'Barlow', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Scanline overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,.08) 2px,
+      rgba(0,0,0,.08) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 100;
+  }
+
+  .logo-box {
+    width: 36px; height: 36px;
+    border: 2px solid var(--accent);
+    display: grid; place-items: center;
+    position: relative;
+  }
+  .logo-box::after {
+    content: '';
+    position: absolute; inset: 3px;
+    background: var(--accent);
+    opacity: .15;
+  }
+  .logo-icon { font-size: 16px; }
+
+  header h1 {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--accent);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  header h1 span { color: var(--muted); }
+
+  .status-dot {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: .1em;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted);
+    transition: background .3s, box-shadow .3s;
+  }
+  .dot.online { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+  .dot.error  { background: var(--warn);   box-shadow: 0 0 8px var(--warn); }
+
+  /* ── Layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr 320px;
+    gap: 0;
+    height: calc(100vh - 61px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+    padding: 20px 0;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 20px 10px;
+  }
+
+  /* endpoint list */
+  .ep-list { list-style: none; }
+  .ep-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 20px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background .15s, border-color .15s;
+  }
+  .ep-item:hover { background: rgba(0,229,255,.04); }
+  .ep-item.active {
+    background: rgba(0,229,255,.07);
+    border-left-color: var(--accent);
+  }
+  .ep-item.active .ep-name { color: var(--accent); }
+
+  .badge {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    padding: 2px 6px; border-radius: 2px;
+    text-transform: uppercase; letter-spacing: .05em;
+    flex-shrink: 0;
+  }
+  .badge.get  { background: rgba(0,255,136,.12); color: var(--accent2); }
+  .badge.post { background: rgba(0,229,255,.1);  color: var(--accent); }
+
+  .ep-name {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--text); line-height: 1.3;
+  }
+  .ep-desc { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .divider {
+    height: 1px; background: var(--border);
+    margin: 16px 0;
+  }
+
+  /* ── Main panel ── */
+  .main {
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  .endpoint-header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .endpoint-header h2 {
+    font-family: var(--mono); font-size: 18px;
+    color: var(--text); display: flex; align-items: center; gap: 12px;
+  }
+  .endpoint-header p {
+    margin-top: 6px; font-size: 13px; color: var(--muted); line-height: 1.5;
+  }
+
+  /* url bar */
+  .url-bar {
+    margin: 20px 32px;
+    display: flex; align-items: stretch; gap: 0;
+    border: 1px solid var(--border2);
+    border-radius: 4px; overflow: hidden;
+  }
+  .url-method {
+    padding: 0 16px;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase;
+    background: rgba(0,229,255,.08); color: var(--accent);
+    border-right: 1px solid var(--border2);
+    flex-shrink: 0;
+  }
+  .url-method.get-m { background: rgba(0,255,136,.07); color: var(--accent2); }
+
+  #base-url-input {
+    padding: 10px 14px;
+    font-family: var(--mono); font-size: 12px;
+    background: var(--panel); color: var(--text);
+    border: none; outline: none; flex: 1;
+  }
+  .url-suffix {
+    padding: 10px 14px;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--accent); background: var(--panel);
+    border-left: 1px solid var(--border); white-space: nowrap;
+    display: flex; align-items: center;
+  }
+
+  /* fields */
+  .fields { padding: 0 32px 24px; }
+  .field-group { margin-bottom: 18px; }
+  label {
+    display: block;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted); letter-spacing: .1em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  label .req { color: var(--warn); margin-left: 4px; }
+
+  input[type="text"], textarea, select {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono); font-size: 13px;
+    padding: 10px 12px; border-radius: 3px;
+    outline: none; transition: border-color .2s;
+  }
+  input[type="text"]:focus,
+  textarea:focus,
+  select:focus { border-color: var(--accent); }
+
+  textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
+
+  select option { background: var(--panel); }
+
+  /* file drop */
+  .file-drop {
+    border: 2px dashed var(--border);
+    border-radius: 4px; padding: 28px;
+    text-align: center; cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+  }
+  .file-drop:hover, .file-drop.drag { border-color: var(--accent); background: rgba(0,229,255,.03); }
+  .file-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .file-drop-icon { font-size: 28px; margin-bottom: 8px; }
+  .file-drop p { font-size: 12px; color: var(--muted); }
+  .file-drop .file-name { color: var(--accent); margin-top: 6px; font-family: var(--mono); font-size: 12px; }
+
+  /* row fields */
+  .row { display: flex; gap: 16px; }
+  .row .field-group { flex: 1; }
+
+  /* send button */
+  .send-btn {
+    margin: 0 32px 28px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  button.primary {
+    padding: 12px 28px;
+    background: var(--accent); color: #000;
+    border: none; border-radius: 3px;
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase;
+    cursor: pointer; transition: opacity .2s, transform .1s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  button.primary:hover { opacity: .88; }
+  button.primary:active { transform: scale(.98); }
+  button.primary:disabled { opacity: .4; cursor: not-allowed; }
+
+  button.secondary {
+    padding: 12px 20px;
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 3px;
+    font-family: var(--mono); font-size: 12px;
+    cursor: pointer; transition: color .2s, border-color .2s;
+  }
+  button.secondary:hover { color: var(--text); border-color: var(--border2); }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(0,0,0,.3);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    display: none;
+  }
+  .loading .spinner { display: block; }
+  .loading .btn-text { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Log panel (right) ── */
+  .log-panel {
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .log-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .log-header span {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted); letter-spacing: .15em; text-transform: uppercase;
+  }
+  .clear-btn {
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    background: none; border: none; cursor: pointer;
+    letter-spacing: .1em; text-transform: uppercase;
+  }
+  .clear-btn:hover { color: var(--text); }
+
+  .log-body {
+    flex: 1; overflow-y: auto;
+    padding: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .log-entry {
+    border-radius: 3px; padding: 10px 12px;
+    font-family: var(--mono); font-size: 11px; line-height: 1.6;
+    border-left: 3px solid;
+    animation: fadeIn .25s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform: none; } }
+
+  .log-entry.info  { background: rgba(0,229,255,.05); border-color: var(--accent); }
+  .log-entry.ok    { background: rgba(0,255,136,.05); border-color: var(--accent2); }
+  .log-entry.error { background: rgba(255,107,53,.07); border-color: var(--warn); }
+  .log-entry.warn  { background: rgba(255,200,0,.05);  border-color: #ffc800; }
+
+  .log-time { color: var(--muted); margin-right: 8px; }
+  .log-status { font-weight: 700; margin-right: 6px; }
+  .log-entry.ok .log-status    { color: var(--accent2); }
+  .log-entry.error .log-status { color: var(--warn); }
+  .log-entry.info .log-status  { color: var(--accent); }
+
+  /* ── Audio player ── */
+  .audio-result {
+    margin: 0 32px 24px;
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    border-radius: 4px; padding: 20px;
+    display: none;
+  }
+  .audio-result.visible { display: block; animation: fadeIn .3s ease; }
+  .audio-label {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--accent2); letter-spacing: .15em;
+    text-transform: uppercase; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .audio-label::before {
+    content: ''; width: 6px; height: 6px;
+    background: var(--accent2); border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100%{ opacity:1 } 50%{ opacity:.4 } }
+
+  audio {
+    width: 100%;
+    filter: invert(1) hue-rotate(180deg);
+  }
+  .download-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 12px; padding: 8px 16px;
+    border: 1px solid var(--border2); border-radius: 3px;
+    font-family: var(--mono); font-size: 11px; color: var(--text);
+    text-decoration: none; transition: border-color .2s, color .2s;
+  }
+  .download-link:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── JSON output ── */
+  .json-out {
+    margin: 0 32px 24px;
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    border-radius: 4px; overflow: hidden;
+    display: none;
+  }
+  .json-out.visible { display: block; animation: fadeIn .3s ease; }
+  .json-out-head {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 10px;
+    color: var(--muted); letter-spacing: .15em; text-transform: uppercase;
+  }
+  pre {
+    padding: 14px; font-family: var(--mono);
+    font-size: 12px; line-height: 1.7;
+    color: var(--accent2); overflow-x: auto;
+    white-space: pre-wrap; word-break: break-all;
+    max-height: 280px; overflow-y: auto;
+  }
+
+  /* ── Scrollbars ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ── Empty state ── */
+  .empty-log {
+    color: var(--muted); font-family: var(--mono); font-size: 11px;
+    text-align: center; padding: 32px 0; line-height: 2;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo-box"><span class="logo-icon">◈</span></div>
+  <h1>EDGE&nbsp;TTS <span>// API TESTER</span></h1>
+  <div class="status-dot">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-text">OFFLINE</span>
+  </div>
+</header>
+
+<!-- ── Layout ── -->
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <p class="section-label">Endpoints</p>
+    <ul class="ep-list" id="ep-list">
+      <li class="ep-item active" data-ep="health">
+        <span class="badge get">GET</span>
+        <div>
+          <div class="ep-name">/health</div>
+          <div class="ep-desc">Health check</div>
+        </div>
+      </li>
+      <li class="ep-item" data-ep="voices">
+        <span class="badge get">GET</span>
+        <div>
+          <div class="ep-name">/voices</div>
+          <div class="ep-desc">List all voices</div>
+        </div>
+      </li>
+      <div class="divider"></div>
+      <li class="ep-item" data-ep="tts-text">
+        <span class="badge post">POST</span>
+        <div>
+          <div class="ep-name">/tts/text</div>
+          <div class="ep-desc">Text → WAV (JSON)</div>
+        </div>
+      </li>
+      <li class="ep-item" data-ep="tts-form">
+        <span class="badge post">POST</span>
+        <div>
+          <div class="ep-name">/tts/text/form</div>
+          <div class="ep-desc">Text → WAV (Form)</div>
+        </div>
+      </li>
+      <li class="ep-item" data-ep="tts-pdf">
+        <span class="badge post">POST</span>
+        <div>
+          <div class="ep-name">/tts/pdf</div>
+          <div class="ep-desc">PDF → WAV</div>
+        </div>
+      </li>
+      <div class="divider"></div>
+      <li class="ep-item" data-ep="gc">
+        <span class="badge post">POST</span>
+        <div>
+          <div class="ep-name">/admin/gc</div>
+          <div class="ep-desc">Garbage collection</div>
+        </div>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- ── Main panel ── -->
+  <main class="main" id="main-panel">
+
+    <!-- ─ health ─ -->
+    <div class="ep-panel" id="panel-health">
+      <div class="endpoint-header">
+        <h2><span class="badge get">GET</span>/health</h2>
+        <p>Ping the API to check if it is online and responding.</p>
+      </div>
+      <div class="url-bar">
+        <div class="url-method get-m">GET</div>
+        <input type="text" id="base-url" placeholder="http://localhost:8000" />
+        <div class="url-suffix">/health</div>
+      </div>
+      <div class="send-btn">
+        <button class="primary" onclick="sendRequest('health')">
+          <div class="spinner"></div><span class="btn-text">▶ SEND</span>
+        </button>
+      </div>
+      <div class="json-out" id="json-health">
+        <div class="json-out-head">RESPONSE</div>
+        <pre id="json-health-pre"></pre>
+      </div>
+    </div>
+
+    <!-- ─ voices ─ -->
+    <div class="ep-panel" id="panel-voices" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge get">GET</span>/voices</h2>
+        <p>Fetch all available TTS voice options supported by the API.</p>
+      </div>
+      <div class="url-bar">
+        <div class="url-method get-m">GET</div>
+        <input type="text" class="base-url-ref" placeholder="http://localhost:8000" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
+        <div class="url-suffix">/voices</div>
+      </div>
+      <div class="send-btn">
+        <button class="primary" onclick="sendRequest('voices')">
+          <div class="spinner"></div><span class="btn-text">▶ SEND</span>
+        </button>
+      </div>
+      <div class="json-out" id="json-voices">
+        <div class="json-out-head">RESPONSE</div>
+        <pre id="json-voices-pre"></pre>
+      </div>
+    </div>
+
+    <!-- ─ tts-text ─ -->
+    <div class="ep-panel" id="panel-tts-text" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge post">POST</span>/tts/text</h2>
+        <p>Convert plain text to WAV audio via JSON body. Returns a downloadable audio file.</p>
+      </div>
+      <div class="url-bar">
+        <div class="url-method">POST</div>
+        <input type="text" class="base-url-ref" placeholder="http://localhost:8000" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
+        <div class="url-suffix">/tts/text</div>
+      </div>
+      <div class="fields">
+        <div class="field-group">
+          <label>text <span class="req">*</span></label>
+          <textarea id="tt-text" placeholder="Enter the text you want to convert to speech..."></textarea>
+        </div>
+        <div class="row">
+          <div class="field-group">
+            <label>voice</label>
+            <select id="tt-voice">
+              <option value="en-US-female">en-US-female (default)</option>
+              <option value="en-US-male">en-US-male</option>
+              <option value="en-GB-female">en-GB-female</option>
+              <option value="en-GB-male">en-GB-male</option>
+              <option value="en-IN-female">en-IN-female</option>
+              <option value="en-IN-male">en-IN-male</option>
+              <option value="en-AU-female">en-AU-female</option>
+              <option value="en-AU-male">en-AU-male</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>rate</label>
+            <input type="text" id="tt-rate" value="+0%" placeholder="+10%, -20%" />
+          </div>
+          <div class="field-group">
+            <label>volume</label>
+            <input type="text" id="tt-volume" value="+0%" placeholder="+5%, -10%" />
+          </div>
+        </div>
+      </div>
+      <div class="send-btn">
+        <button class="primary" id="btn-tts-text" onclick="sendRequest('tts-text')">
+          <div class="spinner"></div><span class="btn-text">▶ SEND</span>
+        </button>
+      </div>
+      <div class="audio-result" id="audio-tts-text">
+        <div class="audio-label">AUDIO OUTPUT</div>
+        <audio id="player-tts-text" controls></audio>
+        <br><a class="download-link" id="dl-tts-text" download="output.wav">⬇ Download WAV</a>
+      </div>
+    </div>
+
+    <!-- ─ tts-form ─ -->
+    <div class="ep-panel" id="panel-tts-form" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge post">POST</span>/tts/text/form</h2>
+        <p>Same as /tts/text but sends data as multipart/form-data — ideal for mobile app integration.</p>
+      </div>
+      <div class="url-bar">
+        <div class="url-method">POST</div>
+        <input type="text" class="base-url-ref" placeholder="http://localhost:8000" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
+        <div class="url-suffix">/tts/text/form</div>
+      </div>
+      <div class="fields">
+        <div class="field-group">
+          <label>text <span class="req">*</span></label>
+          <textarea id="tf-text" placeholder="Enter the text you want to convert to speech..."></textarea>
+        </div>
+        <div class="row">
+          <div class="field-group">
+            <label>voice</label>
+            <select id="tf-voice">
+              <option value="en-US-female">en-US-female (default)</option>
+              <option value="en-US-male">en-US-male</option>
+              <option value="en-GB-female">en-GB-female</option>
+              <option value="en-GB-male">en-GB-male</option>
+              <option value="en-IN-female">en-IN-female</option>
+              <option value="en-IN-male">en-IN-male</option>
+              <option value="en-AU-female">en-AU-female</option>
+              <option value="en-AU-male">en-AU-male</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>rate</label>
+            <input type="text" id="tf-rate" value="+0%" />
+          </div>
+          <div class="field-group">
+            <label>volume</label>
+            <input type="text" id="tf-volume" value="+0%" />
+          </div>
+        </div>
+      </div>
+      <div class="send-btn">
+        <button class="primary" id="btn-tts-form" onclick="sendRequest('tts-form')">
+          <div class="spinner"></div><span class="btn-text">▶ SEND</span>
+        </button>
+      </div>
+      <div class="audio-result" id="audio-tts-form">
+        <div class="audio-label">AUDIO OUTPUT</div>
+        <audio id="player-tts-form" controls></audio>
+        <br><a class="download-link" id="dl-tts-form" download="output.wav">⬇ Download WAV</a>
+      </div>
+    </div>
+
+    <!-- ─ tts-pdf ─ -->
+    <div class="ep-panel" id="panel-tts-pdf" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge post">POST</span>/tts/pdf</h2>
+        <p>Upload a PDF file. The API extracts the text and returns it as WAV audio.</p>
+      </div>
+      <div class="url-bar">
+        <div class="url-method">POST</div>
+        <input type="text" class="base-url-ref" placeholder="http://localhost:8000" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
+        <div class="url-suffix">/tts/pdf</div>
+      </div>
+      <div class="fields">
+        <div class="field-group">
+          <label>PDF File <span class="req">*</span></label>
+          <div class="file-drop" id="drop-zone">
+            <input type="file" id="pdf-file" accept=".pdf" onchange="handleFile(this)" />
+            <div class="file-drop-icon">📄</div>
+            <p>Click to choose a PDF or drag & drop here</p>
+            <p class="file-name" id="file-name-label"></p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field-group">
+            <label>voice</label>
+            <select id="pdf-voice">
+              <option value="en-US-female">en-US-female (default)</option>
+              <option value="en-US-male">en-US-male</option>
+              <option value="en-GB-female">en-GB-female</option>
+              <option value="en-GB-male">en-GB-male</option>
+              <option value="en-IN-female">en-IN-female</option>
+              <option value="en-IN-male">en-IN-male</option>
+              <option value="en-AU-female">en-AU-female</option>
+              <option value="en-AU-male">en-AU-male</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>rate</label>
+            <input type="text" id="pdf-rate" value="+0%" />
+          </div>
+          <div class="field-group">
+            <label>volume</label>
+            <input type="text" id="pdf-volume" value="+0%" />
+          </div>
+        </div>
+      </div>
+      <div class="send-btn">
+        <button class="primary" id="btn-tts-pdf" onclick="sendRequest('tts-pdf')">
+          <div class="spinner"></div><span class="btn-text">▶ SEND</span>
+        </button>
+      </div>
+      <div class="audio-result" id="audio-tts-pdf">
+        <div class="audio-label">AUDIO OUTPUT</div>
+        <audio id="player-tts-pdf" controls></audio>
+        <br><a class="download-link" id="dl-tts-pdf" download="output.wav">⬇ Download WAV</a>
+      </div>
+    </div>
+
+    <!-- ─ gc ─ -->
+    <div class="ep-panel" id="panel-gc" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge post">POST</span>/admin/gc</h2>
+        <p>Trigger garbage collection to manually remove expired WAV files from the server.</p>
+      </div>
+      <div class="url-bar">
+        <div class="url-method">POST</div>
+        <input type="text" class="base-url-ref" placeholder="http://localhost:8000" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
+        <div class="url-suffix">/admin/gc</div>
+      </div>
+      <div class="send-btn">
+        <button class="primary" onclick="sendRequest('gc')">
+          <div class="spinner"></div><span class="btn-text">▶ SEND</span>
+        </button>
+      </div>
+      <div class="json-out" id="json-gc">
+        <div class="json-out-head">RESPONSE</div>
+        <pre id="json-gc-pre"></pre>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Log Panel ── -->
+  <aside class="log-panel">
+    <div class="log-header">
+      <span>Request Log</span>
+      <button class="clear-btn" onclick="clearLog()">CLEAR</button>
+    </div>
+    <div class="log-body" id="log-body">
+      <div class="empty-log">No requests yet.<br>Select an endpoint and hit SEND.</div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let currentEp = 'health';
+  let audioURLs = {};
+
+  // ── Sidebar navigation ────────────────────────────────────────────────────
+  document.querySelectorAll('.ep-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.ep-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      const ep = item.dataset.ep;
+      currentEp = ep;
+      document.querySelectorAll('.ep-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('panel-' + ep).style.display = 'block';
+      syncBaseURL();
+    });
+  });
+
+  // ── Base URL sync ─────────────────────────────────────────────────────────
+  const baseInput = document.getElementById('base-url');
+  baseInput.addEventListener('input', syncBaseURL);
+
+  function getBaseURL() {
+    return (baseInput.value || 'http://localhost:8000').replace(/\/$/, '');
+  }
+
+  function syncBaseURL() {
+    document.querySelectorAll('.base-url-ref').forEach(el => {
+      el.value = getBaseURL();
+    });
+  }
+
+  // ── File handling ─────────────────────────────────────────────────────────
+  function handleFile(input) {
+    const file = input.files[0];
+    if (file) document.getElementById('file-name-label').textContent = '📎 ' + file.name;
+  }
+
+  const dropZone = document.getElementById('drop-zone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.pdf')) {
+      document.getElementById('pdf-file').files = e.dataTransfer.files;
+      document.getElementById('file-name-label').textContent = '📎 ' + file.name;
+    }
+  });
+
+  // ── Button loading ────────────────────────────────────────────────────────
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId) || document.querySelector(`[onclick="sendRequest('${btnId}')"]`);
+    if (!btn) return;
+    loading ? btn.classList.add('loading') : btn.classList.remove('loading');
+    btn.disabled = loading;
+  }
+
+  // ── Log ───────────────────────────────────────────────────────────────────
+  let firstLog = true;
+  function log(type, status, message) {
+    const body = document.getElementById('log-body');
+    if (firstLog) { body.innerHTML = ''; firstLog = false; }
+    const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+    const el = document.createElement('div');
+    el.className = `log-entry ${type}`;
+    el.innerHTML = `<span class="log-time">${now}</span><span class="log-status">${status}</span>${message}`;
+    body.prepend(el);
+  }
+
+  function clearLog() {
+    document.getElementById('log-body').innerHTML = '<div class="empty-log">Log cleared.</div>';
+    firstLog = false;
+  }
+
+  // ── Status indicator ──────────────────────────────────────────────────────
+  function setStatus(state) {
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    dot.className = 'dot ' + (state === 'ok' ? 'online' : state === 'error' ? 'error' : '');
+    txt.textContent = state === 'ok' ? 'ONLINE' : state === 'error' ? 'ERROR' : 'OFFLINE';
+  }
+
+  // ── Show audio result ─────────────────────────────────────────────────────
+  function showAudio(key, blob) {
+    if (audioURLs[key]) URL.revokeObjectURL(audioURLs[key]);
+    const url = URL.createObjectURL(blob);
+    audioURLs[key] = url;
+    const player = document.getElementById('player-' + key);
+    const dlLink = document.getElementById('dl-' + key);
+    const box    = document.getElementById('audio-' + key);
+    player.src = url;
+    dlLink.href = url;
+    box.classList.add('visible');
+    player.play().catch(() => {});
+  }
+
+  // ── Show JSON ─────────────────────────────────────────────────────────────
+  function showJSON(key, data) {
+    const box = document.getElementById('json-' + key);
+    const pre = document.getElementById('json-' + key + '-pre');
+    box.classList.add('visible');
+    pre.textContent = JSON.stringify(data, null, 2);
+  }
+
+  // ── Main request handler ──────────────────────────────────────────────────
+  async function sendRequest(ep) {
+    const base = getBaseURL();
+
+    // button IDs map
+    const btnMap = {
+      'health':   null,
+      'voices':   null,
+      'tts-text': 'btn-tts-text',
+      'tts-form': 'btn-tts-form',
+      'tts-pdf':  'btn-tts-pdf',
+      'gc':       null,
+    };
+    const btnId = btnMap[ep];
+    if (btnId) setLoading(btnId, true);
+
+    log('info', 'REQ', `${ep.toUpperCase()} → ${base}`);
+
+    try {
+      let response;
+
+      // ── health
+      if (ep === 'health') {
+        response = await fetch(`${base}/health`);
+        const data = await response.json();
+        showJSON('health', data);
+        if (response.ok) { setStatus('ok'); log('ok', response.status, ' API is online'); }
+        else { setStatus('error'); log('error', response.status, ' ' + (data.detail || 'error')); }
+      }
+
+      // ── voices
+      else if (ep === 'voices') {
+        response = await fetch(`${base}/voices`);
+        const data = await response.json();
+        showJSON('voices', data);
+        log('ok', response.status, ` ${Object.keys(data.voices || {}).length} voices returned`);
+      }
+
+      // ── tts/text (JSON)
+      else if (ep === 'tts-text') {
+        const text   = document.getElementById('tt-text').value.trim();
+        const voice  = document.getElementById('tt-voice').value;
+        const rate   = document.getElementById('tt-rate').value.trim() || '+0%';
+        const volume = document.getElementById('tt-volume').value.trim() || '+0%';
+        if (!text) { log('warn', '422', ' Text field is empty'); return; }
+        response = await fetch(`${base}/tts/text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, voice, rate, volume }),
+        });
+        if (response.ok) {
+          const blob = await response.blob();
+          showAudio('tts-text', blob);
+          log('ok', response.status, ` WAV generated — ${(blob.size/1024).toFixed(1)} KB`);
+        } else {
+          const err = await response.json().catch(() => ({}));
+          log('error', response.status, ' ' + (err.detail || 'TTS failed'));
+        }
+      }
+
+      // ── tts/text/form
+      else if (ep === 'tts-form') {
+        const text   = document.getElementById('tf-text').value.trim();
+        const voice  = document.getElementById('tf-voice').value;
+        const rate   = document.getElementById('tf-rate').value.trim() || '+0%';
+        const volume = document.getElementById('tf-volume').value.trim() || '+0%';
+        if (!text) { log('warn', '422', ' Text field is empty'); return; }
+        const fd = new FormData();
+        fd.append('text', text); fd.append('voice', voice);
+        fd.append('rate', rate); fd.append('volume', volume);
+        response = await fetch(`${base}/tts/text/form`, { method: 'POST', body: fd });
+        if (response.ok) {
+          const blob = await response.blob();
+          showAudio('tts-form', blob);
+          log('ok', response.status, ` WAV generated — ${(blob.size/1024).toFixed(1)} KB`);
+        } else {
+          const err = await response.json().catch(() => ({}));
+          log('error', response.status, ' ' + (err.detail || 'TTS failed'));
+        }
+      }
+
+      // ── tts/pdf
+      else if (ep === 'tts-pdf') {
+        const fileInput = document.getElementById('pdf-file');
+        if (!fileInput.files.length) { log('warn', '400', ' No PDF file selected'); return; }
+        const voice  = document.getElementById('pdf-voice').value;
+        const rate   = document.getElementById('pdf-rate').value.trim() || '+0%';
+        const volume = document.getElementById('pdf-volume').value.trim() || '+0%';
+        const fd = new FormData();
+        fd.append('file', fileInput.files[0]);
+        fd.append('voice', voice); fd.append('rate', rate); fd.append('volume', volume);
+        log('info', '...', ' Uploading PDF and generating audio (may take a moment)');
+        response = await fetch(`${base}/tts/pdf`, { method: 'POST', body: fd });
+        if (response.ok) {
+          const blob = await response.blob();
+          showAudio('tts-pdf', blob);
+          log('ok', response.status, ` PDF → WAV — ${(blob.size/1024).toFixed(1)} KB`);
+        } else {
+          const err = await response.json().catch(() => ({}));
+          log('error', response.status, ' ' + (err.detail || 'PDF TTS failed'));
+        }
+      }
+
+      // ── admin/gc
+      else if (ep === 'gc') {
+        response = await fetch(`${base}/admin/gc`, { method: 'POST' });
+        const data = await response.json();
+        showJSON('gc', data);
+        log('ok', response.status, ` GC done — ${data.deleted_files} file(s) removed`);
+      }
+
+    } catch (err) {
+      setStatus('error');
+      log('error', 'NET', ' ' + (err.message || 'Network error — is the API running?'));
+    } finally {
+      if (btnId) setLoading(btnId, false);
+    }
+  }
+
+  // Init
+  syncBaseURL();
+</script>
+</body>
+</html>

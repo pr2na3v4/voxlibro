@@ -18,7 +18,9 @@ PyPDF2==3.0.1
 pydantic==2.7.1
 
 # Async HTTP (required by edge-tts)
-aiohttp==3.9.5
+aiohttp>=3.10.0
 
 # Multipart form / file upload support
 python-multipart==0.0.9
+
+edge-tts>=7.0.0
