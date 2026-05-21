@@ -1,23 +1,24 @@
 # ─────────────────────────────────────────────────────────────────
 # Edge TTS API — Python dependencies
-# Python 3.11 (Render free tier default)
-# Install: pip install -r requirements.txt
+# Pinned for Python 3.11 (set runtime.txt to python-3.11.9)
+# All packages have pre-built wheels — no Rust/C compilation needed
 # ─────────────────────────────────────────────────────────────────
 
 # Web framework
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 
-# TTS engine — v7+ includes the Sec-MS-GEC token fix (403 fix)
+# TTS engine — v7+ includes the Sec-MS-GEC token / 403 fix
 edge-tts==7.2.8
 
 # PDF text extraction
 PyPDF2==3.0.1
 
-# Data validation (used internally by FastAPI)
+# Pydantic v2 — must match Python 3.11 pre-built wheel
 pydantic==2.7.1
+pydantic-core==2.18.4
 
-# Async HTTP (required by edge-tts v7+)
+# Async HTTP (edge-tts v7+ requires 3.10+)
 aiohttp==3.10.11
 
 # Multipart form / file upload support
