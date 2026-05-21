@@ -489,7 +489,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method get-m">GET</div>
-        <input type="text" id="base-url" placeholder="http://localhost:8000" />
+        <input type="text" id="base-url" placeholder="https://voxlibro.onrender.com" />
         <div class="url-suffix">/health</div>
       </div>
       <div class="send-btn">
@@ -511,7 +511,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method get-m">GET</div>
-        <input type="text" class="base-url-ref" placeholder="http://localhost:8000" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
+        <input type="text" class="base-url-ref" placeholder="https://voxlibro.onrender.com" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
         <div class="url-suffix">/voices</div>
       </div>
       <div class="send-btn">
@@ -533,7 +533,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method">POST</div>
-        <input type="text" class="base-url-ref" placeholder="http://localhost:8000" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
+        <input type="text" class="base-url-ref" placeholder="https://voxlibro.onrender.com" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
         <div class="url-suffix">/tts/text</div>
       </div>
       <div class="fields">
@@ -585,7 +585,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method">POST</div>
-        <input type="text" class="base-url-ref" placeholder="http://localhost:8000" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
+        <input type="text" class="base-url-ref" placeholder="https://voxlibro.onrender.com" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
         <div class="url-suffix">/tts/text/form</div>
       </div>
       <div class="fields">
@@ -637,7 +637,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method">POST</div>
-        <input type="text" class="base-url-ref" placeholder="http://localhost:8000" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
+        <input type="text" class="base-url-ref" placeholder="https://voxlibro.onrender.com" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
         <div class="url-suffix">/tts/pdf</div>
       </div>
       <div class="fields">
@@ -694,7 +694,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method">POST</div>
-        <input type="text" class="base-url-ref" placeholder="http://localhost:8000" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
+        <input type="text" class="base-url-ref" placeholder="https://voxlibro.onrender.com" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
         <div class="url-suffix">/admin/gc</div>
       </div>
       <div class="send-btn">
@@ -746,7 +746,7 @@
   baseInput.addEventListener('input', syncBaseURL);
 
   function getBaseURL() {
-    return (baseInput.value || 'http://localhost:8000').replace(/\/$/, '');
+    return (baseInput.value || 'https://voxlibro.onrender.com').replace(/\/$/, '');
   }
 
   function syncBaseURL() {
