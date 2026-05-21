@@ -17,7 +17,7 @@ PyPDF2==3.0.1
 # Data validation (used internally by FastAPI)
 pydantic==2.7.1
 
-# Async HTTP (required by edge-tts)
+# Async HTP (required by edge-tts)
 aiohttp>=3.10.0
 
 # Multipart form / file uplod support
