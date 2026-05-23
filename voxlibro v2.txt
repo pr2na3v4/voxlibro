@@ -1,0 +1,76 @@
+VOXLIBRO V2 UPDATE JOURNAL
+
+Date: 2026-05-23
+
+SUMMARY
+-------
+This update adds multilingual voice support, improves frontend usability, and enables local browser access through CORS configuration. The API now supports Hindi and Marathi voices, and the web tester UI hides the raw API URL while staying mobile-responsive.
+
+KEY UPDATES
+-----------
+1. New voice support:
+   - Added Hindi voices:
+     * hi-female -> hi-IN-SwaraNeural
+     * hi-male   -> hi-IN-MadhurNeural
+   - Added Marathi voices:
+     * mr-female -> mr-IN-AarohiNeural
+     * mr-male   -> mr-IN-ManoharNeural
+   - Auto language detection now classifies text as Hindi, Marathi, or English and selects the matching voice.
+
+2. Frontend improvements:
+   - Responsive layout for mobile devices.
+   - Hidden API base URL in UI and request logs.
+   - Improved request logging with endpoint-only labels.
+
+3. CORS middleware:
+   - Configured FastAPI to explicitly allow local development origins:
+     * http://localhost
+     * http://127.0.0.1
+     * http://localhost:5500
+     * http://127.0.0.1:5500
+   - Also continued support for the deployed site origin: https://voxlibro.onrender.com
+
+4. Git changes:
+   - Committed with message: "marathi hindi voice added"
+   - Pushed updates to GitHub on branch `main`.
+
+API ENDPOINTS
+-------------
+1. GET /health
+   - Returns API availability status.
+   - Response example: {"status": "ok", "message": "Edge TTS API is running."}
+
+2. GET /voices
+   - Lists supported voice keys, voice IDs, language, and gender.
+   - Useful for client selection of available voices.
+
+3. POST /tts/text
+   - Accepts JSON body with:
+     * text
+     * voice
+     * rate
+     * volume
+   - Returns a WAV audio file generated from plain text.
+
+4. POST /tts/text/form
+   - Accepts multipart/form-data with the same fields.
+   - Useful for mobile or form-based clients.
+
+5. POST /tts/pdf
+   - Accepts a PDF file upload along with optional voice, rate, and volume.
+   - Extracts text from PDF and returns WAV audio.
+
+6. POST /detect-language
+   - Accepts JSON body with `text`.
+   - Returns the detected language and recommended voice keys for female and male voices.
+   - Useful for previewing which voice will be selected before generating audio.
+
+7. POST /admin/gc
+   - Triggers manual garbage collection to remove expired WAV files.
+   - Returns deleted file count.
+
+NOTES
+-----
+- The frontend now uses a hardcoded API base URL to keep the endpoint hidden in the visible UI.
+- If local client testing is needed, use a browser served from localhost and ensure the API server is available.
+- The CORS configuration is now explicitly set for safe local development and deployed access.
