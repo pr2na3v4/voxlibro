@@ -562,8 +562,8 @@
       </div>
       <div class="url-bar">
         <div class="url-method get-m">GET</div>
-        <input type="text" id="base-url" placeholder="https://voxlibro.onrender.com" />
-        <div class="url-suffix">/health</div>
+        <input type="text" id="base-url" placeholder="https://voxlibro.onrender.com" style="display:none;" />
+        <div class="url-suffix" style="flex:1;">/health</div>
       </div>
       <div class="send-btn">
         <button class="primary" onclick="sendRequest('health')">
@@ -584,8 +584,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method get-m">GET</div>
-        <input type="text" class="base-url-ref" placeholder="https://voxlibro.onrender.com" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
-        <div class="url-suffix">/voices</div>
+        <div class="url-suffix" style="flex:1;">/voices</div>
       </div>
       <div class="send-btn">
         <button class="primary" onclick="sendRequest('voices')">
@@ -606,8 +605,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method">POST</div>
-        <input type="text" class="base-url-ref" placeholder="https://voxlibro.onrender.com" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
-        <div class="url-suffix">/tts/text</div>
+        <div class="url-suffix" style="flex:1;">/tts/text</div>
       </div>
       <div class="fields">
         <div class="field-group">
@@ -658,8 +656,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method">POST</div>
-        <input type="text" class="base-url-ref" placeholder="https://voxlibro.onrender.com" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
-        <div class="url-suffix">/tts/text/form</div>
+        <div class="url-suffix" style="flex:1;">/tts/text/form</div>
       </div>
       <div class="fields">
         <div class="field-group">
@@ -710,8 +707,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method">POST</div>
-        <input type="text" class="base-url-ref" placeholder="https://voxlibro.onrender.com" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
-        <div class="url-suffix">/tts/pdf</div>
+        <div class="url-suffix" style="flex:1;">/tts/pdf</div>
       </div>
       <div class="fields">
         <div class="field-group">
@@ -767,8 +763,7 @@
       </div>
       <div class="url-bar">
         <div class="url-method">POST</div>
-        <input type="text" class="base-url-ref" placeholder="https://voxlibro.onrender.com" disabled style="flex:1;padding:10px 14px;font-family:var(--mono);font-size:12px;background:var(--panel);color:var(--muted);border:none;outline:none;" />
-        <div class="url-suffix">/admin/gc</div>
+        <div class="url-suffix" style="flex:1;">/admin/gc</div>
       </div>
       <div class="send-btn">
         <button class="primary" onclick="sendRequest('gc')">
@@ -814,18 +809,15 @@
     });
   });
 
-  // ── Base URL sync ─────────────────────────────────────────────────────────
-  const baseInput = document.getElementById('base-url');
-  baseInput.addEventListener('input', syncBaseURL);
+  // ── Base URL (hardcoded) ─────────────────────────────────────────────────
+  const API_BASE_URL = 'https://voxlibro.onrender.com';
 
   function getBaseURL() {
-    return (baseInput.value || 'https://voxlibro.onrender.com').replace(/\/$/, '');
+    return API_BASE_URL;
   }
 
   function syncBaseURL() {
-    document.querySelectorAll('.base-url-ref').forEach(el => {
-      el.value = getBaseURL();
-    });
+    // No-op: API URL is now hardcoded and hidden from UI
   }
 
   // ── File handling ─────────────────────────────────────────────────────────
@@ -917,7 +909,7 @@
     const btnId = btnMap[ep];
     if (btnId) setLoading(btnId, true);
 
-    log('info', 'REQ', `${ep.toUpperCase()} → ${base}`);
+    log('info', 'REQ', `Sending ${ep.toUpperCase()} request...`);
 
     try {
       let response;
