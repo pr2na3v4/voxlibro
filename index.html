@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VoxLibro — API Tester</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:      #0a0c0f;
+    --surface: #0f1318;
+    --panel:   #141920;
+    --border:  #1f2d3d;
+    --border2: #263547;
+    --accent:  #00e5ff;
+    --accent2: #00ff88;
+    --warn:    #ff6b35;
+    --hindi:   #ff9d4d;
+    --marathi: #c084fc;
+    --text:    #c8d8e8;
+    --muted:   #4a6070;
+    --mono:    'Share Tech Mono', monospace;
+    --sans:    'Barlow', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.08) 2px, rgba(0,0,0,.08) 4px);
+    pointer-events: none; z-index: 999;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex; align-items: center; gap: 16px;
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo-box {
+    width: 36px; height: 36px;
+    border: 2px solid var(--accent);
+    display: grid; place-items: center; position: relative;
+  }
+  .logo-box::after { content:''; position:absolute; inset:3px; background:var(--accent); opacity:.15; }
+  .logo-icon { font-size: 16px; }
+  header h1 { font-family:var(--mono); font-size:15px; color:var(--accent); letter-spacing:.12em; text-transform:uppercase; }
+  header h1 span { color: var(--muted); }
+  .status-dot { margin-left:auto; display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--muted); transition:background .3s,box-shadow .3s; }
+  .dot.online { background:var(--accent2); box-shadow:0 0 8px var(--accent2); }
+  .dot.error  { background:var(--warn);   box-shadow:0 0 8px var(--warn); }
+
+  /* ── Layout ── */
+  .layout { display:grid; grid-template-columns:280px 1fr 300px; height:calc(100vh - 61px); min-height:0; }
+
+  /* ── Sidebar ── */
+  .sidebar { border-right:1px solid var(--border); background:var(--surface); overflow-y:auto; padding:20px 0; }
+  .section-label { font-family:var(--mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); padding:0 20px 10px; }
+  .ep-list { list-style:none; }
+  .ep-item { display:flex; align-items:center; gap:10px; padding:11px 20px; cursor:pointer; border-left:3px solid transparent; transition:background .15s,border-color .15s; }
+  .ep-item:hover { background:rgba(0,229,255,.04); }
+  .ep-item.active { background:rgba(0,229,255,.07); border-left-color:var(--accent); }
+  .ep-item.active .ep-name { color:var(--accent); }
+  .badge { font-family:var(--mono); font-size:10px; font-weight:700; padding:2px 6px; border-radius:2px; text-transform:uppercase; letter-spacing:.05em; flex-shrink:0; }
+  .badge.get  { background:rgba(0,255,136,.12); color:var(--accent2); }
+  .badge.post { background:rgba(0,229,255,.1);  color:var(--accent); }
+  .ep-name { font-family:var(--mono); font-size:12px; color:var(--text); }
+  .ep-desc { font-size:11px; color:var(--muted); margin-top:1px; }
+  .divider { height:1px; background:var(--border); margin:16px 0; }
+
+  /* ── Main ── */
+  .main { overflow-y:auto; background:var(--bg); }
+  .endpoint-header { padding:28px 32px 20px; border-bottom:1px solid var(--border); }
+  .endpoint-header h2 { font-family:var(--mono); font-size:18px; color:var(--text); display:flex; align-items:center; gap:12px; }
+  .endpoint-header p  { margin-top:6px; font-size:13px; color:var(--muted); line-height:1.5; }
+
+  .url-bar { margin:20px 32px; display:flex; align-items:stretch; border:1px solid var(--border2); border-radius:4px; overflow:hidden; }
+  .url-method { padding:0 16px; display:grid; place-items:center; font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; background:rgba(0,229,255,.08); color:var(--accent); border-right:1px solid var(--border2); flex-shrink:0; }
+  .url-method.get-m { background:rgba(0,255,136,.07); color:var(--accent2); }
+  .url-suffix { padding:10px 14px; font-family:var(--mono); font-size:12px; color:var(--accent); background:var(--panel); flex:1; display:flex; align-items:center; }
+
+  .fields { padding:0 32px 24px; }
+  .field-group { margin-bottom:18px; }
+  label { display:block; font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
+  label .req { color:var(--warn); margin-left:4px; }
+
+  input[type="text"], textarea, select {
+    width:100%; background:var(--panel); border:1px solid var(--border);
+    color:var(--text); font-family:var(--mono); font-size:13px;
+    padding:10px 12px; border-radius:3px; outline:none; transition:border-color .2s;
+  }
+  input[type="text"]:focus, textarea:focus, select:focus { border-color:var(--accent); }
+  textarea { resize:vertical; min-height:110px; line-height:1.6; }
+  select option { background:var(--panel); }
+
+  .row { display:flex; gap:16px; }
+  .row .field-group { flex:1; }
+
+  /* ── Language detect pill ── */
+  .lang-pill {
+    display:none; align-items:center; gap:8px;
+    padding:6px 12px; border-radius:20px; margin-top:8px;
+    font-family:var(--mono); font-size:11px;
+    border:1px solid; width:fit-content;
+    animation: fadeIn .3s ease;
+  }
+  .lang-pill.english { border-color:var(--accent2); color:var(--accent2); background:rgba(0,255,136,.06); }
+  .lang-pill.hindi   { border-color:var(--hindi);   color:var(--hindi);   background:rgba(255,157,77,.06); }
+  .lang-pill.marathi { border-color:var(--marathi);  color:var(--marathi);  background:rgba(192,132,252,.06); }
+  .lang-pill.visible { display:flex; }
+
+  /* file drop */
+  .file-drop { border:2px dashed var(--border); border-radius:4px; padding:28px; text-align:center; cursor:pointer; transition:border-color .2s,background .2s; position:relative; }
+  .file-drop:hover, .file-drop.drag { border-color:var(--accent); background:rgba(0,229,255,.03); }
+  .file-drop input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .file-drop-icon { font-size:28px; margin-bottom:8px; }
+  .file-drop p { font-size:12px; color:var(--muted); }
+  .file-drop .file-name { color:var(--accent); margin-top:6px; font-family:var(--mono); font-size:12px; }
+
+  /* send */
+  .send-btn { margin:0 32px 28px; display:flex; align-items:center; gap:12px; }
+  button.primary {
+    padding:12px 28px; background:var(--accent); color:#000;
+    border:none; border-radius:3px; font-family:var(--mono); font-size:12px;
+    font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+    cursor:pointer; transition:opacity .2s,transform .1s;
+    display:flex; align-items:center; gap:8px;
+  }
+  button.primary:hover { opacity:.88; }
+  button.primary:active { transform:scale(.98); }
+  button.primary:disabled { opacity:.4; cursor:not-allowed; }
+  .spinner { width:14px; height:14px; border:2px solid rgba(0,0,0,.3); border-top-color:#000; border-radius:50%; animation:spin .6s linear infinite; display:none; }
+  .loading .spinner { display:block; }
+  .loading .btn-text { display:none; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── Voice used badge ── */
+  .voice-used {
+    display:none; align-items:center; gap:6px;
+    font-family:var(--mono); font-size:11px; color:var(--muted);
+  }
+  .voice-used.visible { display:flex; }
+  .voice-tag { padding:3px 8px; border-radius:2px; background:rgba(0,229,255,.08); color:var(--accent); border:1px solid var(--border2); }
+
+  /* ── Audio player ── */
+  .audio-result { margin:0 32px 24px; background:var(--panel); border:1px solid var(--border2); border-radius:4px; padding:20px; display:none; }
+  .audio-result.visible { display:block; animation:fadeIn .3s ease; }
+  .audio-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .audio-label { font-family:var(--mono); font-size:10px; color:var(--accent2); letter-spacing:.15em; text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+  .audio-label::before { content:''; width:6px; height:6px; background:var(--accent2); border-radius:50%; box-shadow:0 0 8px var(--accent2); animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  audio { width:100%; filter:invert(1) hue-rotate(180deg); }
+  .download-link { display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:8px 16px; border:1px solid var(--border2); border-radius:3px; font-family:var(--mono); font-size:11px; color:var(--text); text-decoration:none; transition:border-color .2s,color .2s; }
+  .download-link:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* ── JSON output ── */
+  .json-out { margin:0 32px 24px; background:var(--panel); border:1px solid var(--border2); border-radius:4px; overflow:hidden; display:none; }
+  .json-out.visible { display:block; animation:fadeIn .3s ease; }
+  .json-out-head { padding:8px 14px; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:.15em; text-transform:uppercase; }
+  pre { padding:14px; font-family:var(--mono); font-size:12px; line-height:1.7; color:var(--accent2); overflow-x:auto; white-space:pre-wrap; word-break:break-all; max-height:280px; overflow-y:auto; }
+
+  /* ── Log panel ── */
+  .log-panel { border-left:1px solid var(--border); background:var(--surface); display:flex; flex-direction:column; overflow:hidden; }
+  .log-header { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .log-header span { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.15em; text-transform:uppercase; }
+  .clear-btn { font-family:var(--mono); font-size:10px; color:var(--muted); background:none; border:none; cursor:pointer; letter-spacing:.1em; text-transform:uppercase; }
+  .clear-btn:hover { color:var(--text); }
+  .log-body { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .log-entry { border-radius:3px; padding:10px 12px; font-family:var(--mono); font-size:11px; line-height:1.6; border-left:3px solid; animation:fadeIn .25s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+  .log-entry.info  { background:rgba(0,229,255,.05);   border-color:var(--accent); }
+  .log-entry.ok    { background:rgba(0,255,136,.05);   border-color:var(--accent2); }
+  .log-entry.error { background:rgba(255,107,53,.07);  border-color:var(--warn); }
+  .log-entry.warn  { background:rgba(255,200,0,.05);   border-color:#ffc800; }
+  .log-time   { color:var(--muted); margin-right:8px; }
+  .log-status { font-weight:700; margin-right:6px; }
+  .log-entry.ok .log-status    { color:var(--accent2); }
+  .log-entry.error .log-status { color:var(--warn); }
+  .log-entry.info .log-status  { color:var(--accent); }
+
+  /* ── Scrollbars ── */
+  ::-webkit-scrollbar { width:4px; height:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+  .empty-log { color:var(--muted); font-family:var(--mono); font-size:11px; text-align:center; padding:32px 0; line-height:2; }
+
+  /* ── Responsive ── */
+  @media (max-width:1120px) { .layout { grid-template-columns:260px 1fr; } .log-panel { display:none; } }
+  @media (max-width:860px) {
+    header { flex-wrap:wrap; padding:16px 20px; gap:10px; }
+    .status-dot { margin-left:0; }
+    .layout { grid-template-columns:1fr; height:auto; }
+    .sidebar { border-right:none; border-bottom:1px solid var(--border); }
+    .endpoint-header { padding:20px 20px 16px; }
+    .url-bar { margin:16px 20px; }
+    .fields { padding:0 20px 24px; }
+    .row { flex-direction:column; gap:12px; }
+    .send-btn, .audio-result, .json-out { margin-left:20px; margin-right:20px; }
+  }
+  @media (max-width:600px) {
+    header { padding:14px 16px; }
+    .url-bar, .fields, .send-btn, .audio-result, .json-out { margin-left:16px; margin-right:16px; }
+    button.primary { width:100%; justify-content:center; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-box"><span class="logo-icon">◈</span></div>
+  <h1>VOXLIBRO <span>// API TESTER</span></h1>
+  <div class="status-dot">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-text">OFFLINE</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <p class="section-label">Utility</p>
+    <ul class="ep-list">
+      <li class="ep-item active" data-ep="health">
+        <span class="badge get">GET</span>
+        <div><div class="ep-name">/health</div><div class="ep-desc">Health check</div></div>
+      </li>
+      <li class="ep-item" data-ep="voices">
+        <span class="badge get">GET</span>
+        <div><div class="ep-name">/voices</div><div class="ep-desc">List all voices</div></div>
+      </li>
+      <li class="ep-item" data-ep="detect">
+        <span class="badge post">POST</span>
+        <div><div class="ep-name">/detect-language</div><div class="ep-desc">Detect Hindi / Marathi / English</div></div>
+      </li>
+      <div class="divider"></div>
+      <p class="section-label" style="padding-top:4px">TTS</p>
+      <li class="ep-item" data-ep="tts-text">
+        <span class="badge post">POST</span>
+        <div><div class="ep-name">/tts/text</div><div class="ep-desc">Text → WAV (JSON)</div></div>
+      </li>
+      <li class="ep-item" data-ep="tts-form">
+        <span class="badge post">POST</span>
+        <div><div class="ep-name">/tts/text/form</div><div class="ep-desc">Text → WAV (Form)</div></div>
+      </li>
+      <li class="ep-item" data-ep="tts-pdf">
+        <span class="badge post">POST</span>
+        <div><div class="ep-name">/tts/pdf</div><div class="ep-desc">PDF → WAV</div></div>
+      </li>
+      <div class="divider"></div>
+      <li class="ep-item" data-ep="gc">
+        <span class="badge post">POST</span>
+        <div><div class="ep-name">/admin/gc</div><div class="ep-desc">Garbage collection</div></div>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- ── Main panel ── -->
+  <main class="main">
+
+    <!-- health -->
+    <div class="ep-panel" id="panel-health">
+      <div class="endpoint-header">
+        <h2><span class="badge get">GET</span>/health</h2>
+        <p>Ping the API to verify it's online.</p>
+      </div>
+      <div class="url-bar"><div class="url-method get-m">GET</div><div class="url-suffix">/health</div></div>
+      <div class="send-btn">
+        <button class="primary" onclick="sendRequest('health')"><div class="spinner"></div><span class="btn-text">▶ SEND</span></button>
+      </div>
+      <div class="json-out" id="json-health"><div class="json-out-head">RESPONSE</div><pre id="json-health-pre"></pre></div>
+    </div>
+
+    <!-- voices -->
+    <div class="ep-panel" id="panel-voices" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge get">GET</span>/voices</h2>
+        <p>Returns all available voices grouped by language — English, Hindi, Marathi.</p>
+      </div>
+      <div class="url-bar"><div class="url-method get-m">GET</div><div class="url-suffix">/voices</div></div>
+      <div class="send-btn">
+        <button class="primary" onclick="sendRequest('voices')"><div class="spinner"></div><span class="btn-text">▶ SEND</span></button>
+      </div>
+      <div class="json-out" id="json-voices"><div class="json-out-head">RESPONSE</div><pre id="json-voices-pre"></pre></div>
+    </div>
+
+    <!-- detect-language -->
+    <div class="ep-panel" id="panel-detect" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge post">POST</span>/detect-language</h2>
+        <p>Paste any text — find out if it's Hindi, Marathi, or English and which voice will be picked.</p>
+      </div>
+      <div class="url-bar"><div class="url-method">POST</div><div class="url-suffix">/detect-language</div></div>
+      <div class="fields">
+        <div class="field-group">
+          <label>text <span class="req">*</span></label>
+          <textarea id="dl-text" placeholder="नमस्ते / नमस्कार / Hello — paste any text here..."></textarea>
+        </div>
+      </div>
+      <div class="send-btn">
+        <button class="primary" onclick="sendRequest('detect')"><div class="spinner"></div><span class="btn-text">▶ DETECT</span></button>
+      </div>
+      <div class="json-out" id="json-detect"><div class="json-out-head">RESPONSE</div><pre id="json-detect-pre"></pre></div>
+    </div>
+
+    <!-- tts/text -->
+    <div class="ep-panel" id="panel-tts-text" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge post">POST</span>/tts/text</h2>
+        <p>Convert text to WAV via JSON. Use <code style="color:var(--accent);font-family:var(--mono)">auto</code> voice to detect Hindi / Marathi / English automatically.</p>
+      </div>
+      <div class="url-bar"><div class="url-method">POST</div><div class="url-suffix">/tts/text</div></div>
+      <div class="fields">
+        <div class="field-group">
+          <label>text <span class="req">*</span></label>
+          <textarea id="tt-text" placeholder="Type in English, हिंदी, or मराठी..."></textarea>
+          <div class="lang-pill" id="tt-lang-pill">◉ <span id="tt-lang-label">english</span></div>
+        </div>
+        <div class="row">
+          <div class="field-group">
+            <label>voice</label>
+            <select id="tt-voice">
+              <option value="auto">auto (detect language)</option>
+              <optgroup label="── English ──">
+                <option value="en-IN-female">en-IN-female</option>
+                <option value="en-IN-male">en-IN-male</option>
+                <option value="en-US-female">en-US-female</option>
+                <option value="en-US-male">en-US-male</option>
+                <option value="en-GB-female">en-GB-female</option>
+                <option value="en-GB-male">en-GB-male</option>
+              </optgroup>
+              <optgroup label="── Hindi ──">
+                <option value="hi-female">hi-female</option>
+                <option value="hi-male">hi-male</option>
+              </optgroup>
+              <optgroup label="── Marathi ──">
+                <option value="mr-female">mr-female</option>
+                <option value="mr-male">mr-male</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>gender <small style="text-transform:none;letter-spacing:0">(auto only)</small></label>
+            <select id="tt-gender">
+              <option value="female">female</option>
+              <option value="male">male</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>rate</label>
+            <input type="text" id="tt-rate" value="+0%" />
+          </div>
+          <div class="field-group">
+            <label>volume</label>
+            <input type="text" id="tt-volume" value="+0%" />
+          </div>
+        </div>
+      </div>
+      <div class="send-btn">
+        <button class="primary" id="btn-tts-text" onclick="sendRequest('tts-text')"><div class="spinner"></div><span class="btn-text">▶ SEND</span></button>
+        <div class="voice-used" id="vu-tts-text">Voice used: <span class="voice-tag" id="vu-tts-text-tag"></span></div>
+      </div>
+      <div class="audio-result" id="audio-tts-text">
+        <div class="audio-top"><div class="audio-label">AUDIO OUTPUT</div></div>
+        <audio id="player-tts-text" controls></audio>
+        <br><a class="download-link" id="dl-tts-text" download="output.wav">⬇ Download WAV</a>
+      </div>
+    </div>
+
+    <!-- tts/text/form -->
+    <div class="ep-panel" id="panel-tts-form" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge post">POST</span>/tts/text/form</h2>
+        <p>Same as /tts/text but sends multipart/form-data — easier for mobile apps.</p>
+      </div>
+      <div class="url-bar"><div class="url-method">POST</div><div class="url-suffix">/tts/text/form</div></div>
+      <div class="fields">
+        <div class="field-group">
+          <label>text <span class="req">*</span></label>
+          <textarea id="tf-text" placeholder="Type in English, हिंदी, or मराठी..."></textarea>
+          <div class="lang-pill" id="tf-lang-pill">◉ <span id="tf-lang-label">english</span></div>
+        </div>
+        <div class="row">
+          <div class="field-group">
+            <label>voice</label>
+            <select id="tf-voice">
+              <option value="auto">auto (detect language)</option>
+              <optgroup label="── English ──">
+                <option value="en-IN-female">en-IN-female</option>
+                <option value="en-IN-male">en-IN-male</option>
+                <option value="en-US-female">en-US-female</option>
+                <option value="en-US-male">en-US-male</option>
+              </optgroup>
+              <optgroup label="── Hindi ──">
+                <option value="hi-female">hi-female</option>
+                <option value="hi-male">hi-male</option>
+              </optgroup>
+              <optgroup label="── Marathi ──">
+                <option value="mr-female">mr-female</option>
+                <option value="mr-male">mr-male</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>gender</label>
+            <select id="tf-gender"><option value="female">female</option><option value="male">male</option></select>
+          </div>
+          <div class="field-group">
+            <label>rate</label>
+            <input type="text" id="tf-rate" value="+0%" />
+          </div>
+          <div class="field-group">
+            <label>volume</label>
+            <input type="text" id="tf-volume" value="+0%" />
+          </div>
+        </div>
+      </div>
+      <div class="send-btn">
+        <button class="primary" id="btn-tts-form" onclick="sendRequest('tts-form')"><div class="spinner"></div><span class="btn-text">▶ SEND</span></button>
+        <div class="voice-used" id="vu-tts-form">Voice used: <span class="voice-tag" id="vu-tts-form-tag"></span></div>
+      </div>
+      <div class="audio-result" id="audio-tts-form">
+        <div class="audio-top"><div class="audio-label">AUDIO OUTPUT</div></div>
+        <audio id="player-tts-form" controls></audio>
+        <br><a class="download-link" id="dl-tts-form" download="output.wav">⬇ Download WAV</a>
+      </div>
+    </div>
+
+    <!-- tts/pdf -->
+    <div class="ep-panel" id="panel-tts-pdf" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge post">POST</span>/tts/pdf</h2>
+        <p>Upload a PDF — API extracts text, auto-detects language, returns WAV audio.</p>
+      </div>
+      <div class="url-bar"><div class="url-method">POST</div><div class="url-suffix">/tts/pdf</div></div>
+      <div class="fields">
+        <div class="field-group">
+          <label>PDF File <span class="req">*</span></label>
+          <div class="file-drop" id="drop-zone">
+            <input type="file" id="pdf-file" accept=".pdf" onchange="handleFile(this)" />
+            <div class="file-drop-icon">📄</div>
+            <p>Click to choose a PDF or drag & drop here</p>
+            <p class="file-name" id="file-name-label"></p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field-group">
+            <label>voice</label>
+            <select id="pdf-voice">
+              <option value="auto">auto (detect language)</option>
+              <optgroup label="── English ──">
+                <option value="en-IN-female">en-IN-female</option>
+                <option value="en-IN-male">en-IN-male</option>
+                <option value="en-US-female">en-US-female</option>
+              </optgroup>
+              <optgroup label="── Hindi ──">
+                <option value="hi-female">hi-female</option>
+                <option value="hi-male">hi-male</option>
+              </optgroup>
+              <optgroup label="── Marathi ──">
+                <option value="mr-female">mr-female</option>
+                <option value="mr-male">mr-male</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>gender</label>
+            <select id="pdf-gender"><option value="female">female</option><option value="male">male</option></select>
+          </div>
+          <div class="field-group">
+            <label>rate</label>
+            <input type="text" id="pdf-rate" value="+0%" />
+          </div>
+          <div class="field-group">
+            <label>volume</label>
+            <input type="text" id="pdf-volume" value="+0%" />
+          </div>
+        </div>
+      </div>
+      <div class="send-btn">
+        <button class="primary" id="btn-tts-pdf" onclick="sendRequest('tts-pdf')"><div class="spinner"></div><span class="btn-text">▶ SEND</span></button>
+        <div class="voice-used" id="vu-tts-pdf">Voice used: <span class="voice-tag" id="vu-tts-pdf-tag"></span></div>
+      </div>
+      <div class="audio-result" id="audio-tts-pdf">
+        <div class="audio-top"><div class="audio-label">AUDIO OUTPUT</div></div>
+        <audio id="player-tts-pdf" controls></audio>
+        <br><a class="download-link" id="dl-tts-pdf" download="output.wav">⬇ Download WAV</a>
+      </div>
+    </div>
+
+    <!-- gc -->
+    <div class="ep-panel" id="panel-gc" style="display:none">
+      <div class="endpoint-header">
+        <h2><span class="badge post">POST</span>/admin/gc</h2>
+        <p>Manually trigger garbage collection to delete expired WAV files from the server.</p>
+      </div>
+      <div class="url-bar"><div class="url-method">POST</div><div class="url-suffix">/admin/gc</div></div>
+      <div class="send-btn">
+        <button class="primary" onclick="sendRequest('gc')"><div class="spinner"></div><span class="btn-text">▶ SEND</span></button>
+      </div>
+      <div class="json-out" id="json-gc"><div class="json-out-head">RESPONSE</div><pre id="json-gc-pre"></pre></div>
+    </div>
+
+  </main>
+
+  <!-- ── Log panel ── -->
+  <aside class="log-panel">
+    <div class="log-header">
+      <span>Request Log</span>
+      <button class="clear-btn" onclick="clearLog()">CLEAR</button>
+    </div>
+    <div class="log-body" id="log-body">
+      <div class="empty-log">No requests yet.<br>Select an endpoint and hit SEND.</div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  const API_BASE = 'https://voxlibro.onrender.com';
+  let audioURLs  = {};
+  let firstLog   = true;
+
+  // ── Nav ───────────────────────────────────────────────────────────────────
+  document.querySelectorAll('.ep-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.ep-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      document.querySelectorAll('.ep-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('panel-' + item.dataset.ep).style.display = 'block';
+    });
+  });
+
+  // ── Live language detection in textareas ──────────────────────────────────
+  function attachLangDetect(textareaId, pillId, labelId) {
+    let debounce;
+    document.getElementById(textareaId).addEventListener('input', function () {
+      clearTimeout(debounce);
+      const txt = this.value.trim();
+      if (!txt) {
+        document.getElementById(pillId).classList.remove('visible','english','hindi','marathi');
+        return;
+      }
+      debounce = setTimeout(async () => {
+        try {
+          const res  = await fetch(`${API_BASE}/detect-language`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ text: txt }),
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          const lang = data.detected_language;
+          const pill = document.getElementById(pillId);
+          pill.className = `lang-pill visible ${lang}`;
+          document.getElementById(labelId).textContent =
+            lang === 'hindi' ? '🇮🇳 Hindi' : lang === 'marathi' ? '🧡 Marathi' : '🇬🇧 English';
+        } catch(e) {}
+      }, 600);
+    });
+  }
+
+  attachLangDetect('tt-text', 'tt-lang-pill', 'tt-lang-label');
+  attachLangDetect('tf-text', 'tf-lang-pill', 'tf-lang-label');
+
+  // ── File drop ─────────────────────────────────────────────────────────────
+  function handleFile(input) {
+    if (input.files[0]) document.getElementById('file-name-label').textContent = '📎 ' + input.files[0].name;
+  }
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f?.name.endsWith('.pdf')) {
+      document.getElementById('pdf-file').files = e.dataTransfer.files;
+      document.getElementById('file-name-label').textContent = '📎 ' + f.name;
+    }
+  });
+
+  // ── Loading state ─────────────────────────────────────────────────────────
+  function setLoading(id, on) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.classList.toggle('loading', on);
+    btn.disabled = on;
+  }
+
+  // ── Status dot ────────────────────────────────────────────────────────────
+  function setStatus(state) {
+    document.getElementById('status-dot').className = 'dot ' + (state === 'ok' ? 'online' : state === 'error' ? 'error' : '');
+    document.getElementById('status-text').textContent = state === 'ok' ? 'ONLINE' : state === 'error' ? 'ERROR' : 'OFFLINE';
+  }
+
+  // ── Log ───────────────────────────────────────────────────────────────────
+  function log(type, status, msg) {
+    const body = document.getElementById('log-body');
+    if (firstLog) { body.innerHTML = ''; firstLog = false; }
+    const t   = new Date().toLocaleTimeString('en-US', { hour12: false });
+    const el  = document.createElement('div');
+    el.className = `log-entry ${type}`;
+    el.innerHTML = `<span class="log-time">${t}</span><span class="log-status">${status}</span>${msg}`;
+    body.prepend(el);
+  }
+  function clearLog() {
+    document.getElementById('log-body').innerHTML = '<div class="empty-log">Log cleared.</div>';
+    firstLog = false;
+  }
+
+  // ── Audio result ──────────────────────────────────────────────────────────
+  function showAudio(key, blob, voiceUsed) {
+    if (audioURLs[key]) URL.revokeObjectURL(audioURLs[key]);
+    const url = URL.createObjectURL(blob);
+    audioURLs[key] = url;
+    document.getElementById('player-' + key).src = url;
+    document.getElementById('dl-' + key).href     = url;
+    document.getElementById('audio-' + key).classList.add('visible');
+    document.getElementById('player-' + key).play().catch(() => {});
+
+    if (voiceUsed) {
+      const vu  = document.getElementById('vu-' + key);
+      const tag = document.getElementById('vu-' + key + '-tag');
+      if (vu && tag) { tag.textContent = voiceUsed; vu.classList.add('visible'); }
+    }
+  }
+
+  // ── JSON result ───────────────────────────────────────────────────────────
+  function showJSON(key, data) {
+    document.getElementById('json-' + key).classList.add('visible');
+    document.getElementById('json-' + key + '-pre').textContent = JSON.stringify(data, null, 2);
+  }
+
+  // ── Main dispatcher ───────────────────────────────────────────────────────
+  async function sendRequest(ep) {
+    const btnIds = { 'tts-text':'btn-tts-text', 'tts-form':'btn-tts-form', 'tts-pdf':'btn-tts-pdf' };
+    const btnId  = btnIds[ep] || null;
+    if (btnId) setLoading(btnId, true);
+    log('info', 'REQ', ` → ${ep.toUpperCase()}`);
+
+    try {
+      let res;
+
+      if (ep === 'health') {
+        res = await fetch(`${API_BASE}/health`);
+        const d = await res.json();
+        showJSON('health', d);
+        res.ok ? (setStatus('ok'), log('ok', res.status, ' API is online')) :
+                 (setStatus('error'), log('error', res.status, ' ' + (d.detail || 'error')));
+      }
+
+      else if (ep === 'voices') {
+        res = await fetch(`${API_BASE}/voices`);
+        const d = await res.json();
+        showJSON('voices', d);
+        log('ok', res.status, ` ${Object.keys(d.voices||{}).length} voices returned`);
+      }
+
+      else if (ep === 'detect') {
+        const text = document.getElementById('dl-text').value.trim();
+        if (!text) { log('warn','422',' Text is empty'); return; }
+        res = await fetch(`${API_BASE}/detect-language`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ text }),
+        });
+        const d = await res.json();
+        showJSON('detect', d);
+        const lang = d.detected_language;
+        const emoji = lang === 'hindi' ? '🇮🇳' : lang === 'marathi' ? '🧡' : '🇬🇧';
+        log('ok', res.status, ` ${emoji} Detected: ${lang}`);
+      }
+
+      else if (ep === 'tts-text') {
+        const text   = document.getElementById('tt-text').value.trim();
+        const voice  = document.getElementById('tt-voice').value;
+        const gender = document.getElementById('tt-gender').value;
+        const rate   = document.getElementById('tt-rate').value || '+0%';
+        const volume = document.getElementById('tt-volume').value || '+0%';
+        if (!text) { log('warn','422',' Text is empty'); return; }
+        res = await fetch(`${API_BASE}/tts/text`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ text, voice, gender, rate, volume }),
+        });
+        if (res.ok) {
+          const blob      = await res.blob();
+          const voiceUsed = res.headers.get('X-Voice-Used') || voice;
+          showAudio('tts-text', blob, voiceUsed);
+          log('ok', res.status, ` WAV — ${(blob.size/1024).toFixed(1)} KB | voice: ${voiceUsed}`);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          log('error', res.status, ' ' + (err.detail || 'TTS failed'));
+        }
+      }
+
+      else if (ep === 'tts-form') {
+        const text   = document.getElementById('tf-text').value.trim();
+        const voice  = document.getElementById('tf-voice').value;
+        const gender = document.getElementById('tf-gender').value;
+        const rate   = document.getElementById('tf-rate').value || '+0%';
+        const volume = document.getElementById('tf-volume').value || '+0%';
+        if (!text) { log('warn','422',' Text is empty'); return; }
+        const fd = new FormData();
+        fd.append('text', text); fd.append('voice', voice);
+        fd.append('gender', gender); fd.append('rate', rate); fd.append('volume', volume);
+        res = await fetch(`${API_BASE}/tts/text/form`, { method:'POST', body: fd });
+        if (res.ok) {
+          const blob      = await res.blob();
+          const voiceUsed = res.headers.get('X-Voice-Used') || voice;
+          showAudio('tts-form', blob, voiceUsed);
+          log('ok', res.status, ` WAV — ${(blob.size/1024).toFixed(1)} KB | voice: ${voiceUsed}`);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          log('error', res.status, ' ' + (err.detail || 'TTS failed'));
+        }
+      }
+
+      else if (ep === 'tts-pdf') {
+        const fileInput = document.getElementById('pdf-file');
+        if (!fileInput.files.length) { log('warn','400',' No PDF selected'); return; }
+        const voice  = document.getElementById('pdf-voice').value;
+        const gender = document.getElementById('pdf-gender').value;
+        const rate   = document.getElementById('pdf-rate').value || '+0%';
+        const volume = document.getElementById('pdf-volume').value || '+0%';
+        const fd = new FormData();
+        fd.append('file', fileInput.files[0]);
+        fd.append('voice', voice); fd.append('gender', gender);
+        fd.append('rate', rate);   fd.append('volume', volume);
+        log('info','...','  Uploading PDF — this may take a moment...');
+        res = await fetch(`${API_BASE}/tts/pdf`, { method:'POST', body: fd });
+        if (res.ok) {
+          const blob      = await res.blob();
+          const voiceUsed = res.headers.get('X-Voice-Used') || voice;
+          showAudio('tts-pdf', blob, voiceUsed);
+          log('ok', res.status, ` PDF→WAV — ${(blob.size/1024).toFixed(1)} KB | voice: ${voiceUsed}`);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          log('error', res.status, ' ' + (err.detail || 'PDF TTS failed'));
+        }
+      }
+
+      else if (ep === 'gc') {
+        res = await fetch(`${API_BASE}/admin/gc`, { method:'POST' });
+        const d = await res.json();
+        showJSON('gc', d);
+        log('ok', res.status, ` GC — ${d.deleted_files} file(s) removed`);
+      }
+
+    } catch(err) {
+      setStatus('error');
+      log('error','NET',' ' + (err.message || 'Network error'));
+    } finally {
+      if (btnId) setLoading(btnId, false);
+    }
+  }
+</script>
+</body>
+</html>
